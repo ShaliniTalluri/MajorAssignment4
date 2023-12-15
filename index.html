@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width">
+  <title>Dynamic Contour Plot</title>
+  <link href="style.css" rel="stylesheet" type="text/css" />
+  <script src="https://d3js.org/d3.v6.min.js"></script>
+</head>
+
+<body>
+  <div>
+    <label for="contourThreshold">Contour Threshold</label>
+    <input type="range" min="10" max="20" value="20" step="2" id="contourThresholdInput" width="150px" />
+  </div>
+  <svg width="80%" viewbox="0 0 512 512"></svg>
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      const dataFilePath = "./data/Data_CT.csv";
+      const svgContainer = d3.select("svg");
+
+      function generateContourPaths(data, threshold) {
+        const dataValues = data.map((d) => +d[0]);
+        const numRows = 512;
+        const numCols = 512;
+
+        const contourGenerator = d3
+          .contours()
+          .size([numRows, numCols])
+          .thresholds(d3.range(d3.extent(dataValues)[0], d3.extent(dataValues)[1], threshold));
+
+        const contours = contourGenerator(dataValues);
+        const pathGenerator = d3.geoPath();
+        const contourExtent = d3.extent(contours, (d) => d.value);
+
+        const mid = 345;
+
+        const colorInterpolator = d3.scaleDiverging()
+          .domain([contourExtent[0], mid, contourExtent[1]])
+          .interpolator(d3.interpolateYlGnBu);
+
+        svgContainer
+          .selectAll("path")
+          .data(contours)
+          .enter()
+          .append("path")
+          .attr("d", pathGenerator)
+          .attr("stroke", "black")
+          .attr("fill", (d) => 300 > d.value ? colorInterpolator(d.value) : "#fff")
+          .attr("stroke-linejoin", "round")
+          .attr("stroke-width", d => 150 > d.value ? "0px" : "0.05px");
+      }
+
+      function renderPlot() {
+        d3.csv(dataFilePath).then(function (data) {
+          const initialThreshold = 20;
+          generateContourPaths(data, initialThreshold);
+
+          d3.select("#contourThresholdInput").on("input", function () {
+            svgContainer.selectAll("*").remove();
+            generateContourPaths(data, this.value);
+          });
+        });
+      }
+
+      renderPlot();
+    });
+  </script>
+</body>
+
+</html>
